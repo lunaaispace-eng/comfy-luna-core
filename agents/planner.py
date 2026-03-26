@@ -19,6 +19,8 @@ class PlanResult:
     suggested_tools: List[str] = field(default_factory=list)
     knowledge_hints: List[str] = field(default_factory=list)
     notes: str = ""
+    workflow_queries: List[str] = field(default_factory=list)  # search terms for reference workflows
+    is_compound: bool = False  # True when request needs multiple workflow references
 
 
 # Intent patterns: (regex, intent, confidence_boost, suggested_tools, knowledge_hints)
@@ -106,7 +108,72 @@ def classify_intent(message: str) -> PlanResult:
         elif any(word in message_lower for word in ("please", "can you", "could you", "help")):
             best = PlanResult(intent="general", confidence=0.2)
 
+    # Detect compound requests and extract workflow search queries
+    if best.intent == "build":
+        best.workflow_queries, best.is_compound = _extract_workflow_queries(message_lower)
+        if best.is_compound and "get_workflow_template" not in best.suggested_tools:
+            best.suggested_tools.append("get_workflow_template")
+
     return best
+
+
+# Keywords that identify workflow components the agent should search for
+_COMPONENT_PATTERNS = [
+    # Model families
+    (r"\b(sdxl|sd\s*1\.5|sd\s*1|sd\s*3|flux|wan|illustrious|chroma|ltx|pony)\b", None),
+    # Pipeline types
+    (r"\b(txt2img|img2img|text.to.image|image.to.image|t2i|i2i|inpaint|outpaint)\b", None),
+    # Feature components
+    (r"\b(controlnet|control\s*net)\b", "controlnet"),
+    (r"\b(lora|lo-ra)\b", "lora"),
+    (r"\b(upscale|upscaling|highres|hires|hi.res)\b", "upscale"),
+    (r"\b(face\s*detail|face\s*fix|adetailer|face\s*restore)\b", "face detailer"),
+    (r"\b(ip.?adapter|ip.?a)\b", "ipadapter"),
+    (r"\b(video|animate|animation|vid2vid)\b", "video"),
+    (r"\b(inpaint|outpaint|mask)\b", "inpaint"),
+    (r"\b(tile|tiled)\b", "tile"),
+    (r"\b(depth|canny|openpose|pose|lineart|scribble)\b", "controlnet"),
+    (r"\b(img2img|image.to.image|i2i)\b", "img2img"),
+    (r"\b(batch|multiple|grid)\b", "batch"),
+]
+
+
+def _extract_workflow_queries(message: str) -> tuple:
+    """Extract workflow search queries from a build request.
+
+    Returns (queries, is_compound) where queries is a list of search terms
+    for the workflow registry and is_compound is True when the request
+    involves multiple distinct components that might need separate references.
+    """
+    queries = []
+    components = []
+
+    for pattern, label in _COMPONENT_PATTERNS:
+        match = re.search(pattern, message)
+        if match:
+            term = label or match.group(1)
+            if term not in components:
+                components.append(term)
+                queries.append(term)
+
+    # If we found a model family + feature components, make compound queries too
+    # e.g. "SDXL with controlnet and upscaling" → ["sdxl", "controlnet", "upscale", "sdxl controlnet", "sdxl upscale"]
+    model_families = {"sdxl", "sd 1.5", "sd 1", "sd 3", "flux", "wan", "illustrious", "chroma", "ltx", "pony"}
+    found_family = None
+    for comp in components:
+        if comp in model_families:
+            found_family = comp
+            break
+
+    if found_family and len(components) > 1:
+        feature_components = [c for c in components if c != found_family]
+        for feat in feature_components:
+            compound_query = f"{found_family} {feat}"
+            if compound_query not in queries:
+                queries.append(compound_query)
+
+    is_compound = len(components) >= 2
+    return queries, is_compound
 
 
 def get_strategy_note(plan: PlanResult) -> str:
@@ -116,7 +183,7 @@ def get_strategy_note(plan: PlanResult) -> str:
     user likely wants.
     """
     strategies = {
-        "build": "User wants to create a workflow. Search their saved workflows first (search_workflows), check available models, then adapt a template.",
+        "build": "User wants to create a workflow. Search their saved workflows first (search_workflows), check available models, then use a matching template as the base.",
         "modify": "User wants to change the current workflow. Read it first (get_current_workflow), verify inputs with get_node_info, then apply changes.",
         "repair": "User has a problem. Read the current workflow, check for errors, and diagnose before suggesting fixes.",
         "inspect": "User wants information. Use discovery tools to answer their question.",
@@ -125,6 +192,20 @@ def get_strategy_note(plan: PlanResult) -> str:
     }
 
     note = strategies.get(plan.intent, "")
-    if note and plan.confidence >= 0.5:
-        return f"\n[Strategy hint: {note}]"
-    return ""
+    if not note or plan.confidence < 0.5:
+        return ""
+
+    parts = [f"\n[Strategy hint: {note}]"]
+
+    # Add compound workflow guidance
+    if plan.is_compound and plan.workflow_queries:
+        query_list = ", ".join(f'"{q}"' for q in plan.workflow_queries)
+        parts.append(
+            f"[Compound request: search for multiple reference workflows using these queries: {query_list}. "
+            f"Load the best matches with get_workflow_template and combine their patterns into one workflow.]"
+        )
+    elif plan.workflow_queries:
+        query_list = ", ".join(f'"{q}"' for q in plan.workflow_queries)
+        parts.append(f"[Search for reference workflows: {query_list}]")
+
+    return "\n".join(parts)
