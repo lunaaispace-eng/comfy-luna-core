@@ -55,7 +55,7 @@ That means better suggestions, safer workflow edits, fewer hallucinations, and w
 
 **Tool Calling** = agent can search your nodes, inspect node specs, check installed models, read/modify your workflow — all in real-time during the conversation.
 
-### 🛠️ 11 Real-Time ComfyUI Tools
+### 🛠️ 13 Real-Time Tools
 
 The agent doesn't guess — it **queries your actual ComfyUI installation** in real-time:
 
@@ -77,6 +77,14 @@ The agent doesn't guess — it **queries your actual ComfyUI installation** in r
 | `remove_node(node_id)` | Remove nodes and clean up broken connections |
 | `connect_nodes(source, output_slot, target, input_name)` | Wire nodes together with type compatibility checks |
 | `validate_workflow()` | Run 7-check validation on the current workflow |
+
+**Web Access Tools (require user approval):**
+| Tool | Description |
+|------|-------------|
+| `web_search(query)` | Search the web for node docs, workflow guides, model info, troubleshooting |
+| `web_fetch(url)` | Fetch and read a web page for detailed information |
+
+> Every web request triggers an approval dialog — the agent cannot access the internet without your explicit permission.
 
 ### 📚 Workflow Registry
 Indexes your entire local workflow library and makes it searchable, so the agent can find relevant references, patterns, and starting points from your own environment.
@@ -361,6 +369,7 @@ Configuration can be extended for:
 | `/luna/validate-workflow` | POST | Validate workflow JSON |
 | `/luna/chat` | POST | Chat with streaming + tool calling |
 | `/luna/apply-workflow` | POST | Apply workflow to ComfyUI canvas |
+| `/luna/tool-approval` | POST | Approve/deny web access requests |
 
 ---
 
@@ -375,6 +384,7 @@ comfy-luna-core/
 │   ├── registry.py          # Agent auto-discovery
 │   ├── tools.py             # Tool/function calling framework
 │   ├── comfyui_tools.py     # 11 ComfyUI tools (discovery + manipulation + search)
+│   ├── web_tools.py         # Web search and fetch with user approval
 │   ├── planner.py           # Intent classification and strategy routing
 │   ├── ollama.py            # Ollama (local, vision, tools)
 │   ├── gemini.py            # Gemini API (vision, tools, thinking models)
