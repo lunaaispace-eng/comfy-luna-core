@@ -1613,15 +1613,45 @@ class LunaCorePanel {
         const chunk = decoder.decode(value);
         assistantMessage += chunk;
 
+        // Check for tool approval requests
+        const approvalMatch = assistantMessage.match(/<!-- TOOL_APPROVAL_NEEDED:(.*?) -->/);
+        if (approvalMatch) {
+          try {
+            const approvalData = JSON.parse(approvalMatch[1]);
+            // Remove marker from displayed message
+            assistantMessage = assistantMessage.replace(/<!-- TOOL_APPROVAL_NEEDED:.*? -->/, "");
+            if (messageEl) this.updateMessage(messageEl, assistantMessage);
+            // Show approval dialog and wait for user decision
+            const approved = await this.showToolApprovalDialog(approvalData);
+            // Send decision to backend
+            await api.fetchApi("/luna/tool-approval", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                approval_id: approvalData.approval_id,
+                approved: approved,
+              }),
+            });
+          } catch (e) {
+            console.error("[luna-core] Tool approval error:", e);
+          }
+        }
+
+        // Strip approval/confirmation markers from displayed text
+        const displayMessage = assistantMessage
+          .replace(/<!-- TOOL_APPROVAL_NEEDED:.*? -->/g, "")
+          .replace(/<!-- TOOL_APPROVED:.*? -->/g, "")
+          .replace(/<!-- TOOL_DENIED:.*? -->/g, "");
+
         if (firstChunk) {
           this.removeThinkingIndicator();
           firstChunk = false;
         }
 
         if (!messageEl) {
-          messageEl = this.addMessage("assistant", assistantMessage);
+          messageEl = this.addMessage("assistant", displayMessage);
         } else {
-          this.updateMessage(messageEl, assistantMessage);
+          this.updateMessage(messageEl, displayMessage);
         }
       }
 
@@ -1930,6 +1960,76 @@ class LunaCorePanel {
     // Strip the marker from the displayed message
     const cleanContent = responseText.replace(/<!-- CANVAS_MODIFICATIONS:.*? -->/, "").trim();
     this.updateMessage(messageEl, cleanContent);
+  }
+
+  showToolApprovalDialog(approvalData) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement("div");
+      overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.6); z-index: 100000;
+        display: flex; align-items: center; justify-content: center;
+      `;
+
+      const toolName = approvalData.tool_name === "web_search" ? "Web Search" : "Web Fetch";
+      const toolIcon = approvalData.tool_name === "web_search" ? "🔍" : "🌐";
+      const detail = approvalData.tool_name === "web_search"
+        ? `Query: "${approvalData.arguments.query || ""}"`
+        : `URL: ${approvalData.arguments.url || ""}`;
+
+      const dialog = document.createElement("div");
+      dialog.style.cssText = `
+        background: var(--comfy-menu-bg, #1a1a2e); color: var(--input-text, #e0e0e0);
+        border: 1px solid var(--border-color, #444); border-radius: 12px;
+        padding: 24px; max-width: 420px; width: 90%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5); font-family: inherit;
+      `;
+
+      dialog.innerHTML = `
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">
+          ${toolIcon} ${toolName} Request
+        </div>
+        <div style="font-size: 13px; color: var(--descrip-text, #aaa); margin-bottom: 16px;">
+          The agent wants to access the web. Allow this request?
+        </div>
+        <div style="
+          background: rgba(255, 255, 255, 0.05); border-radius: 8px;
+          padding: 12px; font-size: 13px; margin-bottom: 20px;
+          word-break: break-all; border: 1px solid rgba(255, 255, 255, 0.08);
+        ">
+          ${detail}
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button id="luna-deny-btn" style="
+            padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color, #555);
+            background: transparent; color: var(--input-text, #ccc);
+            cursor: pointer; font-size: 13px; font-weight: 500;
+          ">Deny</button>
+          <button id="luna-approve-btn" style="
+            padding: 8px 20px; border-radius: 8px; border: none;
+            background: #4a9eff; color: white;
+            cursor: pointer; font-size: 13px; font-weight: 600;
+          ">Allow</button>
+        </div>
+      `;
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      const cleanup = (result) => {
+        document.body.removeChild(overlay);
+        resolve(result);
+      };
+
+      dialog.querySelector("#luna-approve-btn").addEventListener("click", () => cleanup(true));
+      dialog.querySelector("#luna-deny-btn").addEventListener("click", () => cleanup(false));
+      overlay.addEventListener("click", (e) => { if (e.target === overlay) cleanup(false); });
+
+      // Auto-deny after 55 seconds (before server timeout)
+      setTimeout(() => {
+        if (document.body.contains(overlay)) cleanup(false);
+      }, 55000);
+    });
   }
 
   checkForWorkflow(messageEl, content) {

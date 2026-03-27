@@ -7,6 +7,7 @@ knowledge selection, workflow validation, and auto-correction.
 import asyncio
 import json
 import logging
+import uuid
 from typing import Dict, Any, List, Optional, Set
 
 from aiohttp import web
@@ -15,6 +16,7 @@ from .agents import AgentRegistry, AgentMessage, AgentConfig, ImageAttachment
 from .agents.ollama import OllamaBackend  # noqa: F401 - registers itself
 from .agents.tools import ToolCall, ToolRegistry
 from .agents.comfyui_tools import setup_tools, set_current_workflow, get_pending_modifications
+from .agents.web_tools import setup_web_tools
 from .agents.planner import classify_intent, get_strategy_note
 from .knowledge import KnowledgeManager
 from .knowledge.auto_generator import generate_all as generate_auto_knowledge
@@ -44,7 +46,14 @@ class LunaCoreController:
         self.validator = WorkflowValidator(self.node_registry)
         self.workflow_registry = WorkflowRegistry()
         self._tools = setup_tools(self.node_registry, SystemMonitor, self.workflow_registry)
+        # Add web tools (require user approval)
+        web_tools = setup_web_tools()
+        for wt in web_tools:
+            ToolRegistry.register(wt)
+        self._tools.extend(web_tools)
         self._auto_knowledge_generated = False
+        # Pending approval requests: {approval_id: asyncio.Future}
+        self._pending_approvals: Dict[str, asyncio.Future] = {}
 
     def setup_routes(self, routes: web.RouteTableDef) -> None:
         """Register HTTP routes with aiohttp."""
@@ -346,6 +355,20 @@ class LunaCoreController:
                 "node_count": len(workflow)
             })
 
+        @routes.post("/luna/tool-approval")
+        async def tool_approval(request: web.Request) -> web.Response:
+            """Handle user approval/denial for tools that require it."""
+            data = await request.json()
+            approval_id = data.get("approval_id", "")
+            approved = data.get("approved", False)
+
+            future = self._pending_approvals.get(approval_id)
+            if not future:
+                return web.json_response({"error": "Unknown approval ID"}, status=404)
+
+            future.set_result(approved)
+            return web.json_response({"success": True})
+
         @routes.post("/luna/reset-chat")
         async def reset_chat(request: web.Request) -> web.Response:
             """Reset conversation state for a fresh chat."""
@@ -403,13 +426,26 @@ class LunaCoreController:
 
             # Execute each tool call and feed results back
             for tc in tool_calls:
-                result = await ToolRegistry.execute(tc)
-                result_content = result.content
+                # Check if tool requires user approval
+                tool_def = ToolRegistry.get(tc.name)
+                if tool_def and tool_def.requires_approval:
+                    result_content = await self._request_tool_approval(
+                        tc, stream_response
+                    )
+                    if result_content is None:
+                        # Approved — execute normally
+                        result = await ToolRegistry.execute(tc)
+                        result_content = result.content
+                    # If not None, it's a denial message — use as-is
+                else:
+                    result = await ToolRegistry.execute(tc)
+                    result_content = result.content
+
                 # Truncate large tool responses to prevent context exhaustion
                 if len(result_content) > MAX_TOOL_RESPONSE_CHARS:
                     result_content = (
                         result_content[:MAX_TOOL_RESPONSE_CHARS]
-                        + f"\n... (truncated from {len(result.content)} chars)"
+                        + f"\n... (truncated from {len(result_content)} chars)"
                     )
                 logger.info(f"Tool {tc.name}({tc.arguments}) -> {len(result_content)} chars")
                 current_messages.append(AgentMessage(
@@ -546,6 +582,55 @@ class LunaCoreController:
             pass
 
         return "\n".join(lines)
+
+    async def _request_tool_approval(
+        self,
+        tool_call: ToolCall,
+        stream_response: web.StreamResponse,
+    ) -> Optional[str]:
+        """Request user approval for a tool call.
+
+        Sends an approval marker in the stream, then waits for the frontend
+        to call /luna/tool-approval with the decision.
+
+        Returns None if approved (caller should execute the tool),
+        or a denial message string if denied.
+        """
+        approval_id = str(uuid.uuid4())[:8]
+        future: asyncio.Future = asyncio.get_event_loop().create_future()
+        self._pending_approvals[approval_id] = future
+
+        # Send approval request marker to frontend
+        approval_data = json.dumps({
+            "approval_id": approval_id,
+            "tool_name": tool_call.name,
+            "arguments": tool_call.arguments,
+        })
+        marker = f"\n<!-- TOOL_APPROVAL_NEEDED:{approval_data} -->"
+        await stream_response.write(marker.encode("utf-8"))
+
+        try:
+            # Wait for user response (timeout after 60 seconds)
+            approved = await asyncio.wait_for(future, timeout=60.0)
+        except asyncio.TimeoutError:
+            approved = False
+            logger.warning("Tool approval timed out for %s", tool_call.name)
+        finally:
+            self._pending_approvals.pop(approval_id, None)
+
+        if approved:
+            # Send approval confirmation
+            confirm = f"\n<!-- TOOL_APPROVED:{approval_id} -->"
+            await stream_response.write(confirm.encode("utf-8"))
+            return None  # Caller will execute the tool
+        else:
+            deny = f"\n<!-- TOOL_DENIED:{approval_id} -->"
+            await stream_response.write(deny.encode("utf-8"))
+            return json.dumps({
+                "error": "User denied this web access request.",
+                "tool": tool_call.name,
+                "tip": "The user chose not to allow this web request. Use your existing knowledge or local tools instead.",
+            })
 
     def _build_workflow_context_api(self, workflow: Dict[str, Any], verbose: bool = True) -> str:
         """Build context from API-format workflow (accurate named inputs)."""

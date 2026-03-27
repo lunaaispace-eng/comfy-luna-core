@@ -141,6 +141,10 @@ class AgentBackend(ABC):
 - `remove_node(node_id)` — remove a node and clean up broken links
 - `connect_nodes(source_node_id, source_output_slot, target_node_id, target_input_name)` — wire nodes together
 
+**Web access (requires user approval for each request):**
+- `web_search(query)` — search the web for node docs, workflow guides, model info, troubleshooting
+- `web_fetch(url)` — fetch and read a web page for detailed information
+
 ## WORKFLOW
 
 1. `get_current_workflow()` — always start here

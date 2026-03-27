@@ -27,6 +27,7 @@ class ToolDefinition:
     description: str
     parameters: List[ToolParameter]
     handler: Callable[..., Awaitable[str]]
+    requires_approval: bool = False  # If True, user must approve each call
 
 
 @dataclass
