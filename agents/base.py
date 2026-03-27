@@ -132,7 +132,7 @@ class AgentBackend(ABC):
 - `get_current_workflow()` — read the live canvas state
 
 **Workflow reference (use before building from scratch):**
-- `search_workflows(query, category)` — search user's saved workflows and official templates by name, category (FLUX, SDXL, WAN, etc.), or node type
+- `search_workflows(query, category, source)` — search workflows. Use source='local' for user's saved workflows, source='official' for Comfy-Org templates. ALWAYS check BOTH sources.
 - `get_workflow_template(path)` — load a specific workflow as a reference starting point
 
 **Canvas manipulation (changes apply directly):**
@@ -148,11 +148,12 @@ class AgentBackend(ABC):
 ## WORKFLOW
 
 1. `get_current_workflow()` — always start here
-2. `search_workflows(category)` — check if the user already has a workflow for this task
-3. `get_available_models("checkpoints")` → `get_model_metadata(model)` — know what you're working with
-4. `get_node_info(class_type)` — verify before using any node
-5. Make changes with manipulation tools — they apply directly to canvas
-6. When the user says they changed something — re-read the workflow, don't assume
+2. `search_workflows(source="local")` — check if the user already has a workflow for this task
+3. `search_workflows(source="official")` — ALSO check official Comfy-Org templates for reference
+4. `get_available_models("checkpoints")` → `get_model_metadata(model)` — know what you're working with
+5. `get_node_info(class_type)` — verify before using any node
+6. Make changes with manipulation tools — they apply directly to canvas
+7. When the user says they changed something — re-read the workflow, don't assume
 
 ## KNOWLEDGE
 

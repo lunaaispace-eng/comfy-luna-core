@@ -70,7 +70,16 @@ class LunaCoreController:
                     logger.info("Auto-generated knowledge from ComfyUI installation")
                 except Exception as e:
                     logger.warning("Auto knowledge generation failed: %s", e)
-                # Index local user workflows
+                # Sync official templates on first load (if not already downloaded)
+                try:
+                    from .templates.sync_official import sync as sync_official, OUTPUT_DIR
+                    official_count = len(list(OUTPUT_DIR.glob("*.json"))) if OUTPUT_DIR.exists() else 0
+                    if official_count <= 1:  # Only index.json or empty
+                        synced = sync_official()
+                        logger.info("Synced %d official workflow templates", synced)
+                except Exception as e:
+                    logger.warning("Official template sync failed: %s", e)
+                # Index local user workflows + official templates
                 try:
                     count = self.workflow_registry.load()
                     logger.info("Workflow registry: indexed %d workflows", count)

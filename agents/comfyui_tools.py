@@ -780,7 +780,7 @@ def _make_connect_nodes() -> ToolDefinition:
 # ---------------------------------------------------------------------------
 
 def _make_search_workflows() -> ToolDefinition:
-    async def handler(query: str = "", category: str = "", node_type: str = "") -> str:
+    async def handler(query: str = "", category: str = "", node_type: str = "", source: str = "") -> str:
         if not _workflow_registry:
             return json.dumps({"error": "Workflow registry not initialized."})
 
@@ -788,20 +788,31 @@ def _make_search_workflows() -> ToolDefinition:
             _workflow_registry.load()
 
         # If no filters, show categories overview
-        if not query and not category and not node_type:
+        if not query and not category and not node_type and not source:
             categories = _workflow_registry.get_categories()
+            # Count by source
+            local_count = sum(1 for e in _workflow_registry._entries if e.source == "local")
+            official_count = sum(1 for e in _workflow_registry._entries if e.source == "official")
             return json.dumps({
                 "total_workflows": _workflow_registry.count,
+                "local_workflows": local_count,
+                "official_templates": official_count,
                 "categories": categories,
-                "tip": "Use 'category' to filter by model family (e.g., 'FLUX', 'SDXL', 'WAN'), or 'query' to search by name/content.",
+                "tip": "Use 'source' filter: 'local' for user workflows, 'official' for Comfy-Org templates. Always check BOTH sources before building from scratch.",
             })
 
         results = _workflow_registry.search(query=query, category=category,
                                              node_type=node_type, limit=20)
+
+        # Filter by source if specified
+        if source:
+            source_lower = source.lower()
+            results = [r for r in results if source_lower in r.source.lower()]
+
         if not results:
             return json.dumps({
                 "results": [],
-                "tip": "No workflows matched. Try broader search terms or check available categories.",
+                "tip": "No workflows matched. Try 'source: official' for Comfy-Org templates, or broader search terms.",
                 "categories": _workflow_registry.get_categories(),
             })
 
@@ -828,7 +839,7 @@ def _make_search_workflows() -> ToolDefinition:
 
     return ToolDefinition(
         name="search_workflows",
-        description="Search the user's saved workflows and official templates. Use this BEFORE building a workflow from scratch — the user likely has proven workflows you can adapt. Search by name, category (FLUX, SDXL, WAN, ILLUSTRIOUS, etc.), or node type.",
+        description="Search the user's saved workflows AND official Comfy-Org templates. IMPORTANT: Always search BOTH sources — use source='local' for user workflows and source='official' for official templates. Check both before building from scratch.",
         parameters=[
             ToolParameter(name="query", type="string",
                           description="Search text (matches name, category, node types). Leave empty to see categories overview.",
@@ -838,6 +849,9 @@ def _make_search_workflows() -> ToolDefinition:
                           required=False),
             ToolParameter(name="node_type", type="string",
                           description="Filter by node type used in workflow (e.g., 'LoraLoader', 'ControlNet', 'WAN'). Partial match.",
+                          required=False),
+            ToolParameter(name="source", type="string",
+                          description="Filter by source: 'local' for user's saved workflows, 'official' for Comfy-Org templates. Leave empty to search both.",
                           required=False),
         ],
         handler=handler,
