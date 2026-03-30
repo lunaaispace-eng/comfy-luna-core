@@ -51,7 +51,7 @@ async def _generate_nodes_knowledge(comfyui_url: str) -> Optional[Path]:
         logger.warning("Could not reach ComfyUI for node scan: %s", e)
         return None
 
-    # Group nodes by category
+    # Group nodes by category (compact — no input specs)
     categories: Dict[str, List[dict]] = {}
     for class_type, info in data.items():
         cat = info.get("category", "uncategorized")
@@ -60,31 +60,14 @@ async def _generate_nodes_knowledge(comfyui_url: str) -> Optional[Path]:
         if top_cat not in categories:
             categories[top_cat] = []
 
-        # Extract compact node summary
         node_summary = {"name": class_type}
 
-        # Display name if different
+        # Display name only if meaningfully different
         display = info.get("display_name", class_type)
         if display != class_type:
             node_summary["display"] = display
 
-        # Inputs (required only, compact)
-        required = info.get("input", {}).get("required", {})
-        if required:
-            inputs = {}
-            for inp_name, inp_def in required.items():
-                if isinstance(inp_def, list) and len(inp_def) > 0:
-                    inp_type = inp_def[0]
-                    if isinstance(inp_type, list):
-                        # COMBO type - list of options
-                        inputs[inp_name] = f"COMBO({len(inp_type)} options)"
-                    elif isinstance(inp_type, str):
-                        inputs[inp_name] = inp_type
-                    else:
-                        inputs[inp_name] = str(inp_type)
-            node_summary["inputs"] = inputs
-
-        # Output types - flatten nested lists and ensure strings
+        # Output types only (inputs available via get_node_info tool)
         raw_outputs = info.get("output", [])
         if raw_outputs:
             flat_outputs = []
@@ -95,27 +78,22 @@ async def _generate_nodes_knowledge(comfyui_url: str) -> Optional[Path]:
                     flat_outputs.append(str(o))
             node_summary["outputs"] = flat_outputs
 
-        # Sub-category for context
-        if cat != top_cat:
-            node_summary["subcategory"] = cat
-
         categories[top_cat].append(node_summary)
 
-    # Sort categories and nodes
     sorted_cats = sorted(categories.keys())
 
-    # Build markdown
+    # Build compact markdown — discovery index only
     lines = [
         "---",
         "id: installed_nodes",
         "title: My Installed Nodes",
         "keywords: [nodes, custom nodes, installed, available]",
         "category: my_nodes",
-        "priority: medium",
+        "priority: low",
         "---",
         "",
         f"**{len(data)} nodes installed** across {len(sorted_cats)} categories.",
-        f"Auto-generated from ComfyUI /object_info.",
+        "Use get_node_info(class_type) for full input/output specs.",
         "",
     ]
 
@@ -127,21 +105,10 @@ async def _generate_nodes_knowledge(comfyui_url: str) -> Optional[Path]:
         for node in nodes:
             name = node["name"]
             display = node.get("display", "")
-            display_str = f" ({display})" if display else ""
-
-            inputs = node.get("inputs", {})
             outputs = node.get("outputs", [])
-
-            inp_str = ", ".join(f"{k}:{v}" for k, v in inputs.items()) if inputs else ""
-            out_str = ", ".join(str(o) for o in outputs) if outputs else ""
-
-            parts = [f"- **{name}**{display_str}"]
-            if inp_str:
-                parts.append(f"  IN: {inp_str}")
-            if out_str:
-                parts.append(f"  OUT: {out_str}")
-
-            lines.append(" | ".join(parts) if len(parts) == 1 else "\n  ".join(parts))
+            out_str = " → " + ", ".join(outputs) if outputs else ""
+            display_str = f" ({display})" if display else ""
+            lines.append(f"- **{name}**{display_str}{out_str}")
 
         lines.append("")
 
@@ -155,39 +122,64 @@ async def _generate_nodes_knowledge(comfyui_url: str) -> Optional[Path]:
 # Dynamic model discovery
 # -----------------------------------------------------------------------
 
-# Known loader nodes and which COMBO input holds model filenames
-_KNOWN_LOADERS = {
-    "CheckpointLoaderSimple": ("ckpt_name", "checkpoints"),
-    "CheckpointLoader": ("ckpt_name", "checkpoints"),
-    "LoraLoader": ("lora_name", "loras"),
-    "LoraLoaderModelOnly": ("lora_name", "loras"),
-    "VAELoader": ("vae_name", "vae"),
-    "ControlNetLoader": ("control_net_name", "controlnet"),
-    "UpscaleModelLoader": ("model_name", "upscale_models"),
-    "CLIPLoader": ("clip_name", "clip"),
-    "DualCLIPLoader": ("clip_name1", "clip"),
-    "UNETLoader": ("unet_name", "unet"),
-    "DiffusionModelLoader": ("unet_name", "diffusion_models"),
-    "StyleModelLoader": ("style_model_name", "style_models"),
-    "GLIGENLoader": ("gligen_name", "gligen"),
-    "HypernetworkLoader": ("hypernetwork_name", "hypernetworks"),
-    "unCLIPCheckpointLoader": ("ckpt_name", "checkpoints"),
-    "PhotoMakerLoader": ("photomaker_model_name", "photomaker"),
-    "IPAdapterModelLoader": ("ipadapter_file", "ipadapter"),
-    "InstantIDModelLoader": ("instantid_file", "instantid"),
-    "CLIPVisionLoader": ("clip_name", "clip_vision"),
-}
+# Known loader nodes — ordered by priority so models land in the most
+# specific category first.  CLIP/UNET loaders go last because they
+# show checkpoint files that aren't really clip/unet-only models.
+_KNOWN_LOADERS_ORDERED = [
+    # Priority 1 — checkpoints
+    ("CheckpointLoaderSimple", "ckpt_name", "checkpoints"),
+    ("CheckpointLoader", "ckpt_name", "checkpoints"),
+    ("unCLIPCheckpointLoader", "ckpt_name", "checkpoints"),
+    # Priority 2 — loras
+    ("LoraLoader", "lora_name", "loras"),
+    ("LoraLoaderModelOnly", "lora_name", "loras"),
+    # Priority 3 — vae
+    ("VAELoader", "vae_name", "vae"),
+    # Priority 4 — controlnet
+    ("ControlNetLoader", "control_net_name", "controlnet"),
+    # Priority 5 — upscale
+    ("UpscaleModelLoader", "model_name", "upscale_models"),
+    # Priority 6 — specialized
+    ("StyleModelLoader", "style_model_name", "style_models"),
+    ("GLIGENLoader", "gligen_name", "gligen"),
+    ("HypernetworkLoader", "hypernetwork_name", "hypernetworks"),
+    ("PhotoMakerLoader", "photomaker_model_name", "photomaker"),
+    ("IPAdapterModelLoader", "ipadapter_file", "ipadapter"),
+    ("InstantIDModelLoader", "instantid_file", "instantid"),
+    # Priority 7 — unet/diffusion (after checkpoints to avoid dupes)
+    ("UNETLoader", "unet_name", "unet"),
+    ("DiffusionModelLoader", "unet_name", "diffusion_models"),
+    # Priority 8 — clip (LAST — these list checkpoint files too)
+    ("CLIPLoader", "clip_name", "clip"),
+    ("DualCLIPLoader", "clip_name1", "clip"),
+    ("CLIPVisionLoader", "clip_name", "clip_vision"),
+]
+
+# For backward compat with _guess_model_category
+_KNOWN_LOADER_NAMES = {entry[0] for entry in _KNOWN_LOADERS_ORDERED}
+
+# Junk model patterns to filter out
+_JUNK_PATTERNS = {"tensorrt", "nvidia", "onnx_models", "nsfw_xl", "put_"}
+_JUNK_NAMES = {"", "none", "[none]", "[no model]", "None"}
+
+
+def _is_junk_model(name: str) -> bool:
+    """Filter out system/junk model entries."""
+    if not name or not isinstance(name, str):
+        return True
+    if name in _JUNK_NAMES:
+        return True
+    if len(name) < 3:
+        return True
+    name_lower = name.lower()
+    return any(pat in name_lower for pat in _JUNK_PATTERNS)
 
 
 async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -> Dict[str, List[str]]:
     """Dynamically discover ALL model types by scanning loader nodes.
 
-    This queries /object_info for every known loader node and extracts
-    the COMBO options, which list all available model files (including
-    those from extra_model_paths.yaml).
-
-    Also scans /object_info for any unknown loader nodes with model-like
-    COMBO inputs.
+    Uses priority-ordered loaders with cross-category deduplication
+    so each model file appears in exactly one category (the most specific).
 
     Returns:
         Dict mapping model_type -> list of model filenames
@@ -196,7 +188,6 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
 
     try:
         async with aiohttp.ClientSession() as session:
-            # Fetch full object_info once
             async with session.get(
                 f"{comfyui_url}/object_info",
                 timeout=aiohttp.ClientTimeout(total=30),
@@ -209,8 +200,28 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
         logger.warning("Could not fetch object_info for model discovery: %s", e)
         return all_models
 
-    # 1. Check known loaders
-    for node_class, (input_name, model_type) in _KNOWN_LOADERS.items():
+    # Global dedup set — each model filename appears in exactly one category
+    global_seen: Set[str] = set()
+
+    def _add_models(options: list, model_type: str):
+        """Add models to category, skipping globally seen and junk."""
+        existing = all_models.get(model_type, [])
+        existing_set = set(existing)
+        for name in options:
+            if not isinstance(name, str):
+                continue
+            if name in global_seen or name in existing_set:
+                continue
+            if _is_junk_model(name):
+                continue
+            existing.append(name)
+            existing_set.add(name)
+            global_seen.add(name)
+        if existing:
+            all_models[model_type] = existing
+
+    # 1. Process known loaders in priority order
+    for node_class, input_name, model_type in _KNOWN_LOADERS_ORDERED:
         node_info = all_nodes.get(node_class)
         if not node_info:
             continue
@@ -218,30 +229,17 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
         required = node_info.get("input", {}).get("required", {})
         optional = node_info.get("input", {}).get("optional", {})
 
-        # Check both required and optional inputs
         for inputs in [required, optional]:
             inp_def = inputs.get(input_name)
             if inp_def and isinstance(inp_def, list) and len(inp_def) > 0:
                 options = inp_def[0]
                 if isinstance(options, list):
-                    existing = all_models.get(model_type, [])
-                    # Merge without duplicates
-                    existing_set = set(existing)
-                    for name in options:
-                        if isinstance(name, str) and name not in existing_set:
-                            existing.append(name)
-                            existing_set.add(name)
-                    all_models[model_type] = existing
+                    _add_models(options, model_type)
 
     # 2. Auto-discover unknown loaders
-    # Look for nodes with "Loader" in the name that have COMBO inputs
-    # pointing to model files
     for node_class, node_info in all_nodes.items():
-        # Skip already-known loaders
-        if node_class in _KNOWN_LOADERS:
+        if node_class in _KNOWN_LOADER_NAMES:
             continue
-
-        # Only check nodes that look like loaders
         name_lower = node_class.lower()
         if "load" not in name_lower:
             continue
@@ -254,20 +252,12 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
             if not isinstance(options, list) or len(options) == 0:
                 continue
 
-            # Check if options look like model filenames
             sample = options[0] if options else ""
             if isinstance(sample, str) and any(
                 sample.endswith(ext) for ext in (".safetensors", ".ckpt", ".pt", ".pth", ".bin", ".onnx")
             ):
-                # Determine category from input name
                 category = _guess_model_category(inp_name, node_class)
-                existing = all_models.get(category, [])
-                existing_set = set(existing)
-                for name in options:
-                    if isinstance(name, str) and name not in existing_set:
-                        existing.append(name)
-                        existing_set.add(name)
-                all_models[category] = existing
+                _add_models(options, category)
                 logger.debug(
                     "Auto-discovered model type '%s' from %s.%s (%d models)",
                     category, node_class, inp_name, len(options),
@@ -342,7 +332,7 @@ async def _generate_models_knowledge(comfyui_url: str) -> Optional[Path]:
         "title: My Installed Models",
         "keywords: [models, checkpoint, lora, vae, controlnet, upscale, clip, unet, diffusion, installed]",
         "category: my_models",
-        "priority: medium",
+        "priority: low",
         "---",
         "",
         f"**{total} models installed** across {len(all_models)} categories.",

@@ -49,17 +49,25 @@ def sync(output_dir: Path = OUTPUT_DIR) -> int:
     index_path = output_dir / "index.json"
     index_path.write_text(json.dumps(index, indent=2), encoding="utf-8")
 
-    # Download each blueprint
+    # Extract blueprint entries from the index
+    # Index is an array of modules, each with a "blueprints" array
+    blueprint_names = set()
+    if isinstance(index, list):
+        for module in index:
+            if isinstance(module, dict):
+                for bp in module.get("blueprints", []):
+                    name = bp.get("name", "")
+                    if name:
+                        blueprint_names.add(name)
+    elif isinstance(index, dict):
+        for bp in index.get("blueprints", index.get("templates", [])):
+            name = bp.get("name", "") if isinstance(bp, dict) else ""
+            if name:
+                blueprint_names.add(name)
+
+    # Download each blueprint workflow JSON
     downloaded = 0
-    blueprints = index if isinstance(index, list) else index.get("blueprints", index.get("templates", []))
-    if isinstance(blueprints, dict):
-        blueprints = list(blueprints.values()) if all(isinstance(v, dict) for v in blueprints.values()) else []
-
-    for entry in blueprints:
-        name = entry.get("name", "")
-        if not name:
-            continue
-
+    for name in sorted(blueprint_names):
         filename = f"{name}.json"
         url = f"{RAW_BASE}/{filename}"
 
