@@ -59,13 +59,12 @@ def scan_metadata_files(model_dirs: List[str]) -> Dict[str, Dict[str, Any]]:
                 if normalized:
                     # Key by the model filename (without .metadata.json)
                     model_name = meta_file.name.replace(".metadata.json", "")
-                    # Also store with relative path for subfolder matching
                     results[model_name] = normalized
 
-                    # Store with full relative path too (e.g., "QwenDetails/model.safetensors")
+                    # Also store with relative path using forward slashes
                     try:
                         rel = meta_file.relative_to(p)
-                        rel_model = str(rel).replace(".metadata.json", "")
+                        rel_model = str(rel).replace(".metadata.json", "").replace("\\", "/")
                         results[rel_model] = normalized
                     except ValueError:
                         pass
@@ -86,25 +85,41 @@ def scan_metadata_files(model_dirs: List[str]) -> Dict[str, Dict[str, Any]]:
 def get_model_metadata(model_name: str) -> Optional[Dict[str, Any]]:
     """Get metadata for a specific model by filename.
 
-    Tries exact match first, then partial/fuzzy matching.
+    Tries exact match first, then normalized path match, then fuzzy.
     """
     if not _metadata_cache:
         return None
 
-    # Exact match
+    # Normalize path separators for consistent matching
+    normalized = model_name.replace("\\", "/")
+
+    # Exact match (try both original and normalized)
     if model_name in _metadata_cache:
         return _metadata_cache[model_name]
+    if normalized in _metadata_cache:
+        return _metadata_cache[normalized]
+
+    # Try basename only (e.g. "lora.safetensors" from "QwenDetails/lora.safetensors")
+    basename = normalized.rsplit("/", 1)[-1]
+    if basename in _metadata_cache:
+        return _metadata_cache[basename]
 
     # Strip extension and try
-    stem = Path(model_name).stem
+    stem = Path(basename).stem
     if stem in _metadata_cache:
         return _metadata_cache[stem]
 
-    # Partial match — model_name might be "subfolder/model.safetensors"
-    # or just "model" without extension
-    name_lower = model_name.lower()
+    # Normalized fuzzy match — compare with forward slashes on both sides
+    name_lower = normalized.lower()
+    basename_lower = basename.lower()
     for key, meta in _metadata_cache.items():
-        if name_lower in key.lower() or key.lower() in name_lower:
+        key_norm = key.replace("\\", "/").lower()
+        key_basename = key_norm.rsplit("/", 1)[-1]
+        # Match on basename (most reliable)
+        if basename_lower == key_basename:
+            return meta
+        # Substring match
+        if name_lower in key_norm or key_norm in name_lower:
             return meta
 
     return None
