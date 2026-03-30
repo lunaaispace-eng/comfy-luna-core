@@ -146,8 +146,9 @@ _KNOWN_LOADERS_ORDERED = [
     ("PhotoMakerLoader", "photomaker_model_name", "photomaker"),
     ("IPAdapterModelLoader", "ipadapter_file", "ipadapter"),
     ("InstantIDModelLoader", "instantid_file", "instantid"),
-    # Priority 7 — unet/diffusion (after checkpoints to avoid dupes)
-    ("UNETLoader", "unet_name", "unet"),
+    # Priority 7 — both unet/diffusion loaders share the same file list,
+    # so merge into one category to avoid duplication
+    ("UNETLoader", "unet_name", "diffusion_models"),
     ("DiffusionModelLoader", "unet_name", "diffusion_models"),
     # Priority 8 — clip (LAST — these list checkpoint files too)
     ("CLIPLoader", "clip_name", "clip"),
@@ -301,7 +302,7 @@ def _guess_model_category(input_name: str, node_class: str) -> str:
         return "clip_vision"
     if "clip" in name:
         return "clip"
-    if "unet" in name or "diffusion" in name:
+    if "unet" in name or "diffusion" in name or "dit" in name:
         return "diffusion_models"
     if "embed" in name:
         return "embeddings"
