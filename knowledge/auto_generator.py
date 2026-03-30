@@ -158,9 +158,15 @@ _KNOWN_LOADERS_ORDERED = [
 # For backward compat with _guess_model_category
 _KNOWN_LOADER_NAMES = {entry[0] for entry in _KNOWN_LOADERS_ORDERED}
 
-# Junk model patterns to filter out
-_JUNK_PATTERNS = {"tensorrt", "nvidia", "onnx_models", "nsfw_xl", "put_"}
+# Junk model patterns to filter out (matched anywhere in the path)
+_JUNK_PATTERNS = {
+    "tensorrt", "nvidia", "onnx_models", "nsfw_xl", "put_",
+    ".cache", "huggingface", "bigvgan", ".lock", ".metadata",
+    ".gitignore", ".gitattributes", "readme.md",
+}
 _JUNK_NAMES = {"", "none", "[none]", "[no model]", "None"}
+# Only real model file extensions
+_MODEL_EXTENSIONS = {".safetensors", ".ckpt", ".pt", ".pth", ".bin", ".gguf", ".onnx"}
 
 
 def _is_junk_model(name: str) -> bool:
@@ -172,6 +178,9 @@ def _is_junk_model(name: str) -> bool:
     if len(name) < 3:
         return True
     name_lower = name.lower()
+    # Must end with a real model file extension
+    if not any(name_lower.endswith(ext) for ext in _MODEL_EXTENSIONS):
+        return True
     return any(pat in name_lower for pat in _JUNK_PATTERNS)
 
 
