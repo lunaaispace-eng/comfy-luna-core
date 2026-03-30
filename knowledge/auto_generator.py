@@ -146,10 +146,10 @@ _KNOWN_LOADERS_ORDERED = [
     ("PhotoMakerLoader", "photomaker_model_name", "photomaker"),
     ("IPAdapterModelLoader", "ipadapter_file", "ipadapter"),
     ("InstantIDModelLoader", "instantid_file", "instantid"),
-    # Priority 7 — both unet/diffusion loaders share the same file list,
-    # so merge into one category to avoid duplication
-    ("UNETLoader", "unet_name", "diffusion_models"),
+    # Priority 7 — diffusion models first, unet gets leftovers (gguf)
+    # Post-processed: .gguf files moved to "unet" category
     ("DiffusionModelLoader", "unet_name", "diffusion_models"),
+    ("UNETLoader", "unet_name", "diffusion_models"),
     # Priority 8 — clip (LAST — these list checkpoint files too)
     ("CLIPLoader", "clip_name", "clip"),
     ("DualCLIPLoader", "clip_name1", "clip"),
@@ -281,6 +281,20 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
                     "Auto-discovered model type '%s' from %s.%s (%d models)",
                     category, node_class, inp_name, len(options),
                 )
+
+    # Post-process: split .gguf files from diffusion_models into unet
+    diffusion = all_models.get("diffusion_models", [])
+    if diffusion:
+        keep = []
+        gguf = []
+        for name in diffusion:
+            if name.lower().endswith(".gguf"):
+                gguf.append(name)
+            else:
+                keep.append(name)
+        if gguf:
+            all_models["diffusion_models"] = keep
+            all_models["unet"] = gguf
 
     return all_models
 
