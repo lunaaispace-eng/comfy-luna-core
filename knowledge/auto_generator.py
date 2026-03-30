@@ -200,8 +200,16 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
         logger.warning("Could not fetch object_info for model discovery: %s", e)
         return all_models
 
-    # Global dedup set — each model filename appears in exactly one category
+    # Global dedup set — uses normalized basename so "Illustrious\model.safetensors"
+    # and "Illustrious/model.safetensors" are treated as the same file.
+    # This prevents checkpoints from appearing in clip/unet categories.
     global_seen: Set[str] = set()
+
+    def _normalize(name: str) -> str:
+        """Normalize model path for dedup: lowercase basename."""
+        # Extract filename from path (handles both / and \ separators)
+        basename = name.replace("\\", "/").rsplit("/", 1)[-1]
+        return basename.lower()
 
     def _add_models(options: list, model_type: str):
         """Add models to category, skipping globally seen and junk."""
@@ -210,13 +218,14 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
         for name in options:
             if not isinstance(name, str):
                 continue
-            if name in global_seen or name in existing_set:
+            norm = _normalize(name)
+            if norm in global_seen or name in existing_set:
                 continue
             if _is_junk_model(name):
                 continue
             existing.append(name)
             existing_set.add(name)
-            global_seen.add(name)
+            global_seen.add(norm)
         if existing:
             all_models[model_type] = existing
 
