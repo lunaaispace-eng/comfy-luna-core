@@ -671,12 +671,23 @@ class LunaCoreController:
 
             lines.append(f"\n[{node_id}] {title} ({ct}):")
 
+            # Model-type input names — hide filenames to force tool usage
+            _MODEL_INPUTS = {
+                "ckpt_name", "lora_name", "vae_name", "clip_name",
+                "unet_name", "model_name", "control_net_name",
+                "style_model_name", "upscale_model", "ipadapter_file",
+                "diffusion_model",
+            }
+
             for inp_name, inp_val in inputs.items():
                 if inp_name.startswith("_"):
                     continue  # skip internal fields
                 if isinstance(inp_val, list) and len(inp_val) == 2:
                     # Connection — show as link
                     lines.append(f"  {inp_name}: -> node {inp_val[0]}[{inp_val[1]}]")
+                elif inp_name in _MODEL_INPUTS and isinstance(inp_val, str) and inp_val:
+                    # Hide model filenames — agent must use tools to inspect
+                    lines.append(f"  {inp_name}: [model loaded — use get_current_workflow() for details]")
                 else:
                     # Direct value — show it
                     display_val = inp_val
@@ -912,13 +923,16 @@ class LunaCoreController:
 
     def _extract_checkpoint_params(self, lines: List[str], widgets: List) -> None:
         if widgets:
-            lines.append(f"  checkpoint: {widgets[0]}")
+            lines.append(f"  checkpoint: [model loaded — use get_current_workflow() for details]")
 
     def _extract_lora_params(self, lines: List[str], widgets: List) -> None:
         param_names = ["lora_name", "strength_model", "strength_clip"]
         for i, name in enumerate(param_names):
             if i < len(widgets):
-                lines.append(f"  {name}: {widgets[i]}")
+                if name == "lora_name":
+                    lines.append(f"  {name}: [model loaded — use get_current_workflow() for details]")
+                else:
+                    lines.append(f"  {name}: {widgets[i]}")
 
     def _extract_controlnet_params(self, lines: List[str], widgets: List) -> None:
         param_names = ["strength", "start_percent", "end_percent"]

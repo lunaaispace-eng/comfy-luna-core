@@ -48,6 +48,8 @@ def setup_tools(node_registry, system_monitor=None, workflow_registry=None) -> L
         _make_connect_nodes(),
         _make_search_workflows(),
         _make_get_workflow_template(),
+        _make_queue_prompt(),
+        _make_get_execution_errors(),
     ]
 
     ToolRegistry.clear()
@@ -224,7 +226,7 @@ def reset_model_cache():
 
 
 def _make_get_available_models() -> ToolDefinition:
-    async def handler(model_type: str = "checkpoints") -> str:
+    async def handler(model_type: str = "checkpoints", search: str = "", folder: str = "") -> str:
         models = await _discover_models()
 
         if not models:
@@ -242,14 +244,27 @@ def _make_get_available_models() -> ToolDefinition:
         if found is None:
             found = []
 
-        # Cap response size to avoid context exhaustion
-        MAX_MODELS_IN_RESPONSE = 100
-        if len(found) > MAX_MODELS_IN_RESPONSE:
+        # Apply search filter (case-insensitive substring match on filename)
+        if search:
+            search_lower = search.lower()
+            found = [m for m in found if search_lower in m.lower()]
+
+        # Apply folder filter (match subfolder prefix)
+        if folder:
+            folder_lower = folder.lower().replace("\\", "/")
+            found = [m for m in found
+                     if folder_lower in m.replace("\\", "/").lower().rsplit("/", 1)[0]
+                     if "/" in m.replace("\\", "/") or "\\" in m]
+
+        # Higher limit when filtering (filtered results are smaller)
+        max_response = 200 if (search or folder) else 100
+        if len(found) > max_response:
             return json.dumps({
                 "model_type": model_type,
-                "count": len(found),
-                "models": found[:MAX_MODELS_IN_RESPONSE],
-                "note": f"Showing first {MAX_MODELS_IN_RESPONSE} of {len(found)}. Use a more specific model_type filter if needed.",
+                "total": len(found),
+                "showing": max_response,
+                "models": found[:max_response],
+                "note": f"Showing first {max_response} of {len(found)}. Use 'search' to narrow results.",
                 "available_types": list(models.keys()),
             })
 
@@ -262,10 +277,16 @@ def _make_get_available_models() -> ToolDefinition:
 
     return ToolDefinition(
         name="get_available_models",
-        description="List models available in the user's ComfyUI installation. Discovers ALL model types dynamically from loader nodes, including models from extra_model_paths.yaml. Use 'available_types' in the response to see all categories.",
+        description="List models available in the user's ComfyUI installation. Discovers ALL model types dynamically from loader nodes, including models from extra_model_paths.yaml. Use 'search' to find specific models by name, or 'folder' to filter by subfolder.",
         parameters=[
             ToolParameter(name="model_type", type="string",
                           description="Type of model to list. Common types: 'checkpoints', 'loras', 'vae', 'controlnet', 'upscale_models', 'clip', 'clip_vision', 'unet', 'diffusion_models', 'embeddings', 'ipadapter'. Call without arguments to see all available types.",
+                          required=False),
+            ToolParameter(name="search", type="string",
+                          description="Search filter — case-insensitive substring match on filename (e.g. 'pony', 'illustrious', 'realvis'). Use this when the full list is truncated or you're looking for a specific model.",
+                          required=False),
+            ToolParameter(name="folder", type="string",
+                          description="Filter by subfolder name (e.g. 'Pony', 'QwenDetails', 'Illustrious'). Only returns models in that subfolder.",
                           required=False),
         ],
         handler=handler,
@@ -935,6 +956,115 @@ def _make_get_workflow_template() -> ToolDefinition:
             ToolParameter(name="path", type="string",
                           description="Full file path to the workflow .json file (from search_workflows results).",
                           required=True),
+        ],
+        handler=handler,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tool: queue_prompt (execute the current workflow)
+# ---------------------------------------------------------------------------
+
+def _make_queue_prompt() -> ToolDefinition:
+    async def handler() -> str:
+        if not _current_workflow:
+            return json.dumps({"error": "No workflow loaded. Cannot queue an empty prompt."})
+
+        from ..providers import ComfyUIClient
+        client = ComfyUIClient()
+
+        result = await client.queue_prompt(_current_workflow)
+        if not result:
+            return json.dumps({
+                "error": "Failed to queue prompt. Is ComfyUI running?",
+                "tip": "Check that ComfyUI is reachable at http://127.0.0.1:8188",
+            })
+
+        prompt_id = result.get("prompt_id", "unknown")
+        queue_remaining = result.get("number", 0)
+        return json.dumps({
+            "success": True,
+            "prompt_id": prompt_id,
+            "queue_position": queue_remaining,
+            "note": "Workflow queued for execution. Use get_execution_errors() after it finishes to check for errors.",
+        })
+
+    return ToolDefinition(
+        name="queue_prompt",
+        description="Queue the current workflow for execution in ComfyUI. Use this after building or modifying a workflow to test if it runs successfully. Check results with get_execution_errors() afterward.",
+        parameters=[],
+        handler=handler,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tool: get_execution_errors (check last execution result)
+# ---------------------------------------------------------------------------
+
+def _make_get_execution_errors() -> ToolDefinition:
+    async def handler(limit: int = 1) -> str:
+        from ..providers import ComfyUIClient
+        client = ComfyUIClient()
+
+        history = await client.get_history()
+        if not history:
+            return json.dumps({
+                "error": "Could not fetch execution history. Is ComfyUI running?",
+            })
+
+        # History is {prompt_id: {status, outputs, ...}}
+        # Get the most recent entries
+        entries = sorted(
+            history.items(),
+            key=lambda x: x[1].get("status", {}).get("status_str", ""),
+            reverse=True,
+        )[:min(limit, 5)]
+
+        if not entries:
+            return json.dumps({"message": "No execution history found."})
+
+        results = []
+        for prompt_id, entry in entries:
+            status = entry.get("status", {})
+            status_str = status.get("status_str", "unknown")
+            messages = status.get("messages", [])
+
+            result_entry = {
+                "prompt_id": prompt_id,
+                "status": status_str,
+            }
+
+            # Check for errors in status messages
+            errors = []
+            for msg in messages:
+                if isinstance(msg, (list, tuple)) and len(msg) >= 2:
+                    msg_type = msg[0]
+                    msg_data = msg[1] if isinstance(msg[1], dict) else {}
+                    if "error" in str(msg_type).lower() or msg_data.get("exception_message"):
+                        errors.append({
+                            "type": msg_type,
+                            "message": msg_data.get("exception_message", ""),
+                            "details": msg_data.get("exception_type", ""),
+                            "node_id": msg_data.get("node_id", ""),
+                            "node_type": msg_data.get("node_type", ""),
+                        })
+
+            if errors:
+                result_entry["errors"] = errors
+            else:
+                result_entry["message"] = "Execution completed successfully" if status_str == "success" else f"Status: {status_str}"
+
+            results.append(result_entry)
+
+        return json.dumps({"executions": results})
+
+    return ToolDefinition(
+        name="get_execution_errors",
+        description="Check the result of the last workflow execution(s). Returns success/failure status and any error messages including node IDs and exception details. Use this after queue_prompt() to diagnose failures.",
+        parameters=[
+            ToolParameter(name="limit", type="integer",
+                          description="Number of recent executions to check (default 1, max 5).",
+                          required=False),
         ],
         handler=handler,
     )

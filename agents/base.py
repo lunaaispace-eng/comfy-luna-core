@@ -121,6 +121,12 @@ class AgentBackend(ABC):
 2. Always read the current workflow before modifying it. The user may have changed things.
 3. Match prompting style and settings to the model's base architecture (from metadata).
 4. Include trigger words from model metadata in prompts.
+5. NEVER recommend a model, LoRA, or checkpoint based on workflow context alone. Always call get_model_metadata() to verify architecture compatibility before suggesting any model.
+6. When get_available_models truncates results, use the search parameter to find specific models instead of assuming they don't exist.
+7. When building workflows, ALWAYS search BOTH local (source='local') and official (source='official') templates.
+8. After building or modifying a workflow, offer to test it with queue_prompt().
+9. If execution fails, use get_execution_errors() to diagnose the issue.
+10. Nodes added via add_node() spawn without layout — warn the user to auto-arrange after you're done.
 
 ## TOOLS
 

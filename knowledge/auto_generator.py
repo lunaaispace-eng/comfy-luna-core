@@ -296,6 +296,21 @@ async def discover_all_model_types(comfyui_url: str = "http://127.0.0.1:8188") -
             all_models["diffusion_models"] = keep
             all_models["unet"] = gguf
 
+    # Post-process: remove checkpoints/loras/vae/diffusion models from clip category
+    # CLIPLoader lists checkpoint files too — those aren't standalone CLIP models
+    if "clip" in all_models:
+        non_clip_basenames: Set[str] = set()
+        for cat in ("checkpoints", "loras", "vae", "diffusion_models", "unet",
+                     "controlnet", "upscale_models"):
+            for name in all_models.get(cat, []):
+                non_clip_basenames.add(_normalize(name))
+        all_models["clip"] = [
+            n for n in all_models["clip"]
+            if _normalize(n) not in non_clip_basenames
+        ]
+        if not all_models["clip"]:
+            del all_models["clip"]
+
     return all_models
 
 
