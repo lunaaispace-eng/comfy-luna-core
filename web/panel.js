@@ -1871,7 +1871,11 @@ class LunaCorePanel {
             continue;
           }
           node.title = mod.title || mod.class_type;
-          node.pos = [lastX + 50, 200];
+          if (mod.x !== undefined && mod.y !== undefined && mod.x >= 0 && mod.y >= 0) {
+            node.pos = [mod.x, mod.y];
+          } else {
+            node.pos = [lastX + 50, 200];
+          }
           lastX = node.pos[0] + (node.size?.[0] || 200);
 
           // Set widget values from inputs (skip connections which are arrays)
@@ -1900,6 +1904,17 @@ class LunaCorePanel {
             applied++;
           } else {
             console.warn(`[luna-core] Node ${mod.node_id} not found for removal`);
+            failed++;
+          }
+        }
+
+        // --- AUTO ARRANGE: reorganize node layout ---
+        else if (mod.action === "auto_arrange") {
+          try {
+            app.graph.arrange();
+            applied++;
+          } catch (e) {
+            console.warn("[luna-core] Auto-arrange failed:", e);
             failed++;
           }
         }

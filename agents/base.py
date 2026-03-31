@@ -126,7 +126,7 @@ class AgentBackend(ABC):
 7. When building workflows, ALWAYS search BOTH local (source='local') and official (source='official') templates.
 8. After building or modifying a workflow, offer to test it with queue_prompt().
 9. If execution fails, use get_execution_errors() to diagnose the issue.
-10. Nodes added via add_node() spawn without layout — warn the user to auto-arrange after you're done.
+10. After adding multiple nodes, call auto_arrange_canvas() to organize the layout.
 
 ## TOOLS
 
@@ -143,9 +143,14 @@ class AgentBackend(ABC):
 
 **Canvas manipulation (changes apply directly):**
 - `modify_node_input(node_id, input_name, value)` — change a widget value (INT, FLOAT, STRING, COMBO)
-- `add_node(class_type, inputs, title)` — add a new node to canvas
+- `add_node(class_type, inputs, title, x, y)` — add a new node to canvas (optional x/y for positioning)
 - `remove_node(node_id)` — remove a node and clean up broken links
 - `connect_nodes(source_node_id, source_output_slot, target_node_id, target_input_name)` — wire nodes together
+- `auto_arrange_canvas()` — auto-arrange all nodes for a clean layout
+
+**Execution (test your work):**
+- `queue_prompt()` — queue the current workflow for execution
+- `get_execution_errors(limit)` — check last execution result and error details
 
 **Web access (requires user approval for each request):**
 - `web_search(query)` — search the web for node docs, workflow guides, model info, troubleshooting

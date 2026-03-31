@@ -50,6 +50,7 @@ def setup_tools(node_registry, system_monitor=None, workflow_registry=None) -> L
         _make_get_workflow_template(),
         _make_queue_prompt(),
         _make_get_execution_errors(),
+        _make_auto_arrange_canvas(),
     ]
 
     ToolRegistry.clear()
@@ -583,7 +584,7 @@ def _make_modify_node_input() -> ToolDefinition:
 # ---------------------------------------------------------------------------
 
 def _make_add_node() -> ToolDefinition:
-    async def handler(class_type: str, inputs: str, title: str = "") -> str:
+    async def handler(class_type: str, inputs: str, title: str = "", x: int = -1, y: int = -1) -> str:
         global _current_workflow
         if not _current_workflow:
             return json.dumps({"error": "No workflow loaded. Ask the user to check 'Include current workflow'."})
@@ -620,13 +621,18 @@ def _make_add_node() -> ToolDefinition:
         }
 
         # Track for direct canvas application
-        _pending_modifications.append({
+        mod = {
             "action": "add",
             "node_id": next_id,
             "class_type": class_type,
             "inputs": parsed_inputs,
             "title": title or class_type,
-        })
+        }
+        # Include position if specified
+        if x >= 0 and y >= 0:
+            mod["x"] = x
+            mod["y"] = y
+        _pending_modifications.append(mod)
 
         return json.dumps({
             "success": True,
@@ -637,7 +643,7 @@ def _make_add_node() -> ToolDefinition:
 
     return ToolDefinition(
         name="add_node",
-        description="Add a new node to the current workflow. Use get_node_types() to find the right node and get_node_info() to check required inputs. Connections to other nodes use format [\"source_node_id\", output_slot_index].",
+        description="Add a new node to the current workflow. Use get_node_types() to find the right node and get_node_info() to check required inputs. Connections to other nodes use format [\"source_node_id\", output_slot_index]. Use x/y to position the node on canvas, or call auto_arrange_canvas() after adding all nodes.",
         parameters=[
             ToolParameter(name="class_type", type="string",
                           description="The node class_type (e.g. 'KSampler', 'LoraLoader'). Must be a valid installed node.",
@@ -647,6 +653,12 @@ def _make_add_node() -> ToolDefinition:
                           required=True),
             ToolParameter(name="title", type="string",
                           description="Optional display title for the node.",
+                          required=False),
+            ToolParameter(name="x", type="integer",
+                          description="X position on canvas (pixels). If omitted, auto-placed to the right of existing nodes.",
+                          required=False),
+            ToolParameter(name="y", type="integer",
+                          description="Y position on canvas (pixels). If omitted, auto-placed at y=200.",
                           required=False),
         ],
         handler=handler,
@@ -1066,5 +1078,27 @@ def _make_get_execution_errors() -> ToolDefinition:
                           description="Number of recent executions to check (default 1, max 5).",
                           required=False),
         ],
+        handler=handler,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tool: auto_arrange_canvas (organize node layout)
+# ---------------------------------------------------------------------------
+
+def _make_auto_arrange_canvas() -> ToolDefinition:
+    async def handler() -> str:
+        _pending_modifications.append({
+            "action": "auto_arrange",
+        })
+        return json.dumps({
+            "success": True,
+            "message": "Auto-arrange queued. The canvas will be reorganized when modifications are applied.",
+        })
+
+    return ToolDefinition(
+        name="auto_arrange_canvas",
+        description="Auto-arrange all nodes on the canvas for a clean layout. Call this after adding multiple nodes to organize them visually. Uses LiteGraph's built-in graph arrangement.",
+        parameters=[],
         handler=handler,
     )
