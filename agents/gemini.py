@@ -329,17 +329,13 @@ class GeminiBackend(AgentBackend):
 
         gemini_tools = self._tools_to_gemini(tools)
 
-        # Force tool use on first round, allow text responses after
-        tool_round = (config.additional_params or {}).get("tool_round", 0)
-        fc_mode = "ANY" if tool_round == 0 else "AUTO"
-
         gen_config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=config.temperature,
             max_output_tokens=config.max_tokens,
             tools=gemini_tools,
             tool_config=types.ToolConfig(
-                function_calling_config=types.FunctionCallingConfig(mode=fc_mode)
+                function_calling_config=types.FunctionCallingConfig(mode="AUTO")
             ),
         )
 

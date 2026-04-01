@@ -418,9 +418,6 @@ class LunaCoreController:
         full_text = ""
 
         for _round in range(MAX_TOOL_ROUNDS):
-            # Tell the agent which tool round we're on (used by Gemini for ANY/AUTO mode)
-            config.additional_params = {**(config.additional_params or {}), "tool_round": _round}
-
             text_parts = []
             tool_calls = []
 
