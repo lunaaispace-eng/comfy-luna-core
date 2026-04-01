@@ -356,7 +356,23 @@ npm install -g @anthropic-ai/claude-code
 claude  # Login with Claude Max or Pro account
 ```
 
+Or use the included installer: double-click **`install_claude_cli.bat`** in the extension folder. It installs the CLI and creates a `CLAUDE.md` project context file in your ComfyUI root.
+
 > Uses your existing Claude subscription. No separate API billing.
+
+</details>
+
+<details>
+<summary><b>Codex (CLI — works with ChatGPT Plus)</b></summary>
+
+```bash
+npm install -g @openai/codex
+codex  # Sign in with ChatGPT Plus/Pro account (no API key needed)
+```
+
+Or use the included installer: double-click **`install_codex_cli.bat`** in the extension folder. It installs the CLI and creates a project context file in your ComfyUI root.
+
+> Works with ChatGPT Plus/Pro login — no API key required. Can also use `OPENAI_API_KEY` if preferred.
 
 </details>
 
