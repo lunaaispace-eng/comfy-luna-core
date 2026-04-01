@@ -15,7 +15,7 @@ class LunaCorePanel {
     this.currentModel = "";
     this.availableAgents = {};
     this.systemInfo = null;
-    this.includeWorkflow = false;
+    this.includeWorkflow = localStorage.getItem("luna-include-workflow") !== "false";
     this.contextMode = localStorage.getItem("luna-context-mode") || "standard";
     this.knowledgeCategories = null; // null = all enabled
     this.contextOptionsOpen = false;
@@ -203,6 +203,7 @@ class LunaCorePanel {
     this.agentSelect = this.container.querySelector(".cp-agent-select");
     this.modelSelect = this.container.querySelector(".cp-model-select");
     this.workflowToggle = this.container.querySelector(".cp-workflow-toggle");
+    this.workflowToggle.checked = this.includeWorkflow;
     this.workflowStatus = this.container.querySelector(".workflow-status");
     this.imagePreviewStrip = this.container.querySelector(".cp-image-preview");
     this.fileInput = this.container.querySelector(".cp-file-input");
@@ -230,6 +231,7 @@ class LunaCorePanel {
 
     this.workflowToggle.addEventListener("change", (e) => {
       this.includeWorkflow = e.target.checked;
+      localStorage.setItem("luna-include-workflow", e.target.checked);
       this.updateWorkflowStatus();
     });
 
@@ -1463,8 +1465,6 @@ class LunaCorePanel {
   resetChat() {
     this.messages = [];
     this.messagesContainer.innerHTML = "";
-    this.includeWorkflow = false;
-    this.workflowToggle.checked = false;
     this.updateWorkflowStatus();
     this.lastDetectedWorkflow = null;
     this.clearPendingImages();
