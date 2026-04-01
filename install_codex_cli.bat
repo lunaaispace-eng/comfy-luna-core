@@ -80,10 +80,10 @@ echo.
 if defined OPENAI_API_KEY (
     echo [OK] OPENAI_API_KEY is set.
 ) else (
-    echo [WARN] OPENAI_API_KEY is not set.
-    echo        Codex requires an OpenAI API key to function.
-    echo        Set it with: set OPENAI_API_KEY=sk-xxxxx
-    echo        Or add it to your system environment variables.
+    echo [INFO] OPENAI_API_KEY is not set — that's fine.
+    echo        Codex works with ChatGPT Plus/Pro login (no API key needed^).
+    echo        Just run 'codex' and it will prompt you to sign in.
+    echo        Alternatively, set an API key: set OPENAI_API_KEY=sk-xxxxx
     echo.
 )
 
@@ -152,14 +152,13 @@ echo   Installation Complete!
 echo ============================================
 echo.
 echo Next steps:
-echo   1. Set your OpenAI API key if not already set:
-echo      set OPENAI_API_KEY=sk-xxxxx
-echo.
-echo   2. Open a terminal in your ComfyUI directory:
+echo   1. Open a terminal in your ComfyUI directory:
 echo      cd %COMFYUI_ROOT%
 echo.
-echo   3. Run Codex:
+echo   2. Run Codex:
 echo      codex
+echo.
+echo   3. Sign in with your ChatGPT Plus/Pro account (or use an API key)
 echo.
 echo   4. Start asking questions about your ComfyUI setup!
 echo.
