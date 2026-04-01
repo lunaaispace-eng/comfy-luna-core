@@ -1,0 +1,952 @@
+[
+  {
+    "moduleName": "default",
+    "title": "Text to Image",
+    "blueprints": [
+      {
+        "name": "text_to_image",
+        "title": "Text to Image",
+        "description": "Text to Image blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "width",
+            "type": "INT"
+          },
+          {
+            "name": "height",
+            "type": "INT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "ae.safetensors",
+          "z_image_turbo_bf16.safetensors"
+        ]
+      },
+      {
+        "name": "text_to_image_flux_2_dev",
+        "title": "Text to Image (Flux.2 Dev)",
+        "description": "Text to Image (Flux.2 Dev) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "width",
+            "type": "INT"
+          },
+          {
+            "name": "height",
+            "type": "INT"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "flux2_dev_fp8mixed.safetensors",
+          "mistral_3_small_flux2_bf16.safetensors",
+          "flux2-vae.safetensors"
+        ]
+      },
+      {
+        "name": "text_to_image_z_image_turbo",
+        "title": "Text to Image (Z-Image-Turbo)",
+        "description": "Text to Image (Z-Image-Turbo) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "width",
+            "type": "INT"
+          },
+          {
+            "name": "height",
+            "type": "INT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "ae.safetensors",
+          "z_image_turbo_bf16.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Image Editing",
+    "blueprints": [
+      {
+        "name": "image_edit",
+        "title": "Image Edit",
+        "description": "Image Edit blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image2",
+            "type": "IMAGE"
+          },
+          {
+            "name": "image3",
+            "type": "IMAGE"
+          },
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "prompt",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_2.5_vl_7b_fp8_scaled.safetensors",
+          "qwen_image_vae.safetensors",
+          "qwen_image_edit_2511_bf16.safetensors",
+          "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors"
+        ]
+      },
+      {
+        "name": "image_edit_flux_2_dev",
+        "title": "Image Edit (Flux.2 Dev)",
+        "description": "Image Edit (Flux.2 Dev) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "pixels",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "flux2-vae.safetensors",
+          "mistral_3_small_flux2_bf16.safetensors",
+          "flux2_dev_fp8mixed.safetensors"
+        ]
+      },
+      {
+        "name": "image_edit_flux_2_klein_4b",
+        "title": "Image Edit (Flux.2 Klein 4B)",
+        "description": "Image Edit (Flux.2 Klein 4B) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "image",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "flux-2-klein-base-4b-fp8.safetensors",
+          "qwen_3_4b.safetensors",
+          "flux2-vae.safetensors"
+        ]
+      },
+      {
+        "name": "image_edit_qwen_2511",
+        "title": "Image Edit (Qwen 2511)",
+        "description": "Image Edit (Qwen 2511) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image1",
+            "type": "IMAGE"
+          },
+          {
+            "name": "image2",
+            "type": "IMAGE"
+          },
+          {
+            "name": "image3",
+            "type": "IMAGE"
+          },
+          {
+            "name": "prompt",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_image_vae.safetensors",
+          "qwen_image_edit_2511_bf16.safetensors",
+          "qwen_2.5_vl_7b_fp8_scaled.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "ControlNet",
+    "blueprints": [
+      {
+        "name": "controlnet_z_image_turbo",
+        "title": "ControlNet (Z-Image-Turbo)",
+        "description": "ControlNet (Z-Image-Turbo) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "z_image_turbo_bf16.safetensors",
+          "ae.safetensors",
+          "Z-Image-Turbo-Fun-Controlnet-Union.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Depth",
+    "blueprints": [
+      {
+        "name": "depth_to_image_z_image_turbo",
+        "title": "Depth to Image (Z-Image-Turbo)",
+        "description": "Depth to Image (Z-Image-Turbo) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "z_image_turbo_bf16.safetensors",
+          "ae.safetensors",
+          "Z-Image-Turbo-Fun-Controlnet-Union.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Text to Video",
+    "blueprints": [
+      {
+        "name": "text_to_video",
+        "title": "Text to Video",
+        "description": "Text to Video blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "length",
+            "type": "INT"
+          },
+          {
+            "name": "width",
+            "type": "INT"
+          },
+          {
+            "name": "height",
+            "type": "INT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "wan_2.1_vae.safetensors",
+          "wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"
+        ]
+      },
+      {
+        "name": "text_to_video_wan_2_2",
+        "title": "Text to Video (Wan 2.2)",
+        "description": "Text to Video (Wan 2.2) blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "length",
+            "type": "INT"
+          },
+          {
+            "name": "width",
+            "type": "INT"
+          },
+          {
+            "name": "height",
+            "type": "INT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "wan_2.1_vae.safetensors",
+          "wan2.2_t2v_low_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_t2v_high_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_t2v_lightx2v_4steps_lora_v1.1_high_noise.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Image to Video",
+    "blueprints": [
+      {
+        "name": "image_to_video",
+        "title": "Image to Video",
+        "description": "Image to Video blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "start_image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "wan_2.1_vae.safetensors",
+          "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+        ]
+      },
+      {
+        "name": "image_to_video_wan_2_2",
+        "title": "Image to Video (Wan 2.2)",
+        "description": "Image to Video (Wan 2.2) blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "start_image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "wan_2.1_vae.safetensors",
+          "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Video",
+    "blueprints": [
+      {
+        "name": "canny_to_video_ltx_2_0",
+        "title": "Canny to Video (LTX 2.0)",
+        "description": "Canny to Video (LTX 2.0) blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "strength",
+            "type": "FLOAT"
+          },
+          {
+            "name": "bypass",
+            "type": "BOOLEAN"
+          },
+          {
+            "name": "video",
+            "type": "VIDEO"
+          },
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "low_threshold",
+            "type": "FLOAT"
+          },
+          {
+            "name": "high_threshold",
+            "type": "FLOAT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "ltx-2-19b-ic-lora-canny-control.safetensors",
+          "ltx-2-19b-dev-fp8.safetensors",
+          "gemma_3_12B_it_fp4_mixed.safetensors",
+          "ltx-2-19b-distilled-lora-384.safetensors",
+          "ltx-2-spatial-upscaler-x2-1.0.safetensors"
+        ]
+      },
+      {
+        "name": "first_last_frame_to_video",
+        "title": "First-Last-Frame to Video",
+        "description": "First-Last-Frame to Video blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "start_image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "end_image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+          "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_low_noise_14B_fp8_scaled.safetensors",
+          "wan2.2_i2v_lightx2v_4steps_lora_v1_low_noise.safetensors",
+          "wan2.2_i2v_lightx2v_4steps_lora_v1_high_noise.safetensors"
+        ]
+      },
+      {
+        "name": "pose_to_video_ltx_2_0",
+        "title": "Pose to Video (LTX 2.0)",
+        "description": "Pose to Video (LTX 2.0) blueprint",
+        "mediaType": "video",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "strength",
+            "type": "FLOAT"
+          },
+          {
+            "name": "bypass",
+            "type": "BOOLEAN"
+          },
+          {
+            "name": "video",
+            "type": "VIDEO"
+          },
+          {
+            "name": "image",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "VIDEO",
+            "type": "VIDEO"
+          }
+        ],
+        "models": [
+          "ltx-2-spatial-upscaler-x2-1.0.safetensors",
+          "ltx-2-19b-distilled-lora-384.safetensors",
+          "ltx-2-19b-ic-lora-pose-control.safetensors",
+          "ltx-2-19b-dev-fp8.safetensors",
+          "gemma_3_12B_it_fp4_mixed.safetensors"
+        ]
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Image Tools",
+    "blueprints": [
+      {
+        "name": "brightness_and_contrast",
+        "title": "Brightness and Contrast",
+        "description": "Brightness and Contrast blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "chromatic_aberration",
+        "title": "Chromatic Aberration",
+        "description": "Chromatic Aberration blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "color_adjustment",
+        "title": "Color Adjustment",
+        "description": "Color Adjustment blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "edge_preserving_blur",
+        "title": "Edge-Preserving Blur",
+        "description": "Edge-Preserving Blur blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "film_grain",
+        "title": "Film Grain",
+        "description": "Film Grain blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "glow",
+        "title": "Glow",
+        "description": "Glow blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "hue_and_saturation",
+        "title": "Hue and Saturation",
+        "description": "Hue and Saturation blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "image_blur",
+        "title": "Image Blur",
+        "description": "Image Blur blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "image_channels",
+        "title": "Image Channels",
+        "description": "Image Channels blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          },
+          {
+            "name": "IMAGE1",
+            "type": "IMAGE"
+          },
+          {
+            "name": "IMAGE2",
+            "type": "IMAGE"
+          },
+          {
+            "name": "IMAGE3",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "image_levels",
+        "title": "Image Levels",
+        "description": "Image Levels blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "sharpen",
+        "title": "Sharpen",
+        "description": "Sharpen blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      },
+      {
+        "name": "unsharp_mask",
+        "title": "Unsharp Mask",
+        "description": "Unsharp Mask blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "images.image0",
+            "type": "IMAGE"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE0",
+            "type": "IMAGE"
+          }
+        ],
+        "models": []
+      }
+    ]
+  },
+  {
+    "moduleName": "default",
+    "title": "Other",
+    "blueprints": [
+      {
+        "name": "canny_to_image_z_image_turbo",
+        "title": "Canny to Image (Z-Image-Turbo)",
+        "description": "Canny to Image (Z-Image-Turbo) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "low_threshold",
+            "type": "FLOAT"
+          },
+          {
+            "name": "high_threshold",
+            "type": "FLOAT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "z_image_turbo_bf16.safetensors",
+          "ae.safetensors",
+          "Z-Image-Turbo-Fun-Controlnet-Union.safetensors"
+        ]
+      },
+      {
+        "name": "pose_to_image",
+        "title": "Pose to Image",
+        "description": "Pose to Image blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          },
+          {
+            "name": "seed",
+            "type": "INT"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "z_image_turbo_bf16.safetensors",
+          "ae.safetensors",
+          "Z-Image-Turbo-Fun-Controlnet-Union.safetensors"
+        ]
+      },
+      {
+        "name": "pose_to_image_z_image_turbo",
+        "title": "Pose to Image (Z-Image-Turbo)",
+        "description": "Pose to Image (Z-Image-Turbo) blueprint",
+        "mediaType": "image",
+        "mediaSubtype": "webp",
+        "inputs": [
+          {
+            "name": "image",
+            "type": "IMAGE"
+          },
+          {
+            "name": "text",
+            "type": "STRING"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "IMAGE",
+            "type": "IMAGE"
+          }
+        ],
+        "models": [
+          "qwen_3_4b.safetensors",
+          "z_image_turbo_bf16.safetensors",
+          "ae.safetensors",
+          "Z-Image-Turbo-Fun-Controlnet-Union.safetensors"
+        ]
+      }
+    ]
+  }
+]
