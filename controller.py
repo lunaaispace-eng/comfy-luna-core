@@ -203,7 +203,8 @@ class LunaCoreController:
             # Build workflow context
             workflow_context = ""
             if current_workflow:
-                verbose = context_mode != "minimal"
+                # Force minimal context for tool-calling agents to encourage tool use
+                verbose = context_mode != "minimal" and agent_name not in ("gemini",)
                 # Try to use API format for more accurate context
                 api_wf = self._convert_ui_to_api_format(current_workflow)
                 if api_wf:
@@ -225,6 +226,14 @@ class LunaCoreController:
             full_prompt += "\n\n" + system_context
             if workflow_context:
                 full_prompt += "\n\n" + workflow_context
+
+            # Reinforce tool usage at end of prompt (recency effect)
+            full_prompt += (
+                "\n\n## REMINDER\n"
+                "ALWAYS use tools before answering. Never guess model names, node names, "
+                "or workflow details from context above. Call get_current_workflow(), "
+                "get_model_metadata(), get_node_info() to verify facts before responding."
+            )
 
             # Build messages list
             messages = []
@@ -409,6 +418,9 @@ class LunaCoreController:
         full_text = ""
 
         for _round in range(MAX_TOOL_ROUNDS):
+            # Tell the agent which tool round we're on (used by Gemini for ANY/AUTO mode)
+            config.additional_params = {**(config.additional_params or {}), "tool_round": _round}
+
             text_parts = []
             tool_calls = []
 

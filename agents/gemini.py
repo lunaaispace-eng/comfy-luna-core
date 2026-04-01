@@ -201,14 +201,17 @@ class GeminiBackend(AgentBackend):
             properties = {}
             required = []
             for param in tool.parameters:
+                desc = param.description
+                if param.default is not None:
+                    desc += f" (default: {param.default})"
                 prop = types.Schema(
                     type=param.type.upper(),
-                    description=param.description,
+                    description=desc,
                 )
                 if param.enum:
                     prop = types.Schema(
                         type=param.type.upper(),
-                        description=param.description,
+                        description=desc,
                         enum=param.enum,
                     )
                 properties[param.name] = prop
@@ -326,11 +329,18 @@ class GeminiBackend(AgentBackend):
 
         gemini_tools = self._tools_to_gemini(tools)
 
+        # Force tool use on first round, allow text responses after
+        tool_round = (config.additional_params or {}).get("tool_round", 0)
+        fc_mode = "ANY" if tool_round == 0 else "AUTO"
+
         gen_config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=config.temperature,
             max_output_tokens=config.max_tokens,
             tools=gemini_tools,
+            tool_config=types.ToolConfig(
+                function_calling_config=types.FunctionCallingConfig(mode=fc_mode)
+            ),
         )
 
         try:
@@ -360,10 +370,16 @@ class GeminiBackend(AgentBackend):
                                     tc_name = tc.name
                                     break
                         if tc_name:
+                            # Parse JSON tool results into dicts for structured access
+                            try:
+                                parsed = json.loads(msg.content)
+                                resp_data = parsed if isinstance(parsed, dict) else {"result": msg.content}
+                            except (json.JSONDecodeError, TypeError):
+                                resp_data = {"result": msg.content}
                             function_responses.append(types.Part(
                                 function_response=types.FunctionResponse(
                                     name=tc_name,
-                                    response={"result": msg.content},
+                                    response=resp_data,
                                 )
                             ))
 

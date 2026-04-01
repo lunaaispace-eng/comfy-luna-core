@@ -258,6 +258,9 @@ class KnowledgeManager:
         if agent_name == "claude_code":
             return AGENT_DEFAULT_BUDGETS["claude_code"]
 
+        if agent_name == "gemini":
+            return 10_000  # Smaller budget — avoid burying tool rules in massive knowledge
+
         return AGENT_DEFAULT_BUDGETS["default"]
 
     def build_knowledge_text(
