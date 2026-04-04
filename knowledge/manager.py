@@ -239,14 +239,11 @@ class KnowledgeManager:
             model_name: Specific model being used
             context_mode: User-selected mode (minimal/standard/verbose)
         """
-        # User override takes priority
-        if context_mode in CONTEXT_BUDGETS:
-            return CONTEXT_BUDGETS[context_mode]
+        # Agent-specific caps take priority (tool-calling agents fetch details on demand)
+        if agent_name == "gemini":
+            return 10_000  # Hard cap — Gemini has tools, doesn't need large knowledge dumps
 
-        # Agent-specific defaults
         if agent_name == "ollama":
-            # Estimate model size from name (check longest patterns first to
-            # avoid "3b" matching inside "13b")
             size_indicators = {"70b": 20000, "32b": 15000, "14b": 12000, "13b": 12000,
                              "8b": 8000, "7b": 8000, "3b": 8000, "1b": 8000}
             model_lower = model_name.lower()
@@ -258,8 +255,9 @@ class KnowledgeManager:
         if agent_name == "claude_code":
             return AGENT_DEFAULT_BUDGETS["claude_code"]
 
-        if agent_name == "gemini":
-            return 10_000  # Smaller budget — avoid burying tool rules in massive knowledge
+        # User context_mode applies to agents without hard caps
+        if context_mode in CONTEXT_BUDGETS:
+            return CONTEXT_BUDGETS[context_mode]
 
         return AGENT_DEFAULT_BUDGETS["default"]
 

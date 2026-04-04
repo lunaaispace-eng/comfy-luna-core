@@ -472,6 +472,20 @@ class LunaCoreController:
                     tool_call_id=tc.id,
                     metadata={"tool_name": tc.name},
                 ))
+
+            # Trim older tool results to prevent context bloat across rounds
+            # Keep last 4 messages intact, truncate older tool results to 500 chars
+            if len(current_messages) > 10:
+                cutoff = len(current_messages) - 4
+                for i in range(cutoff):
+                    msg = current_messages[i]
+                    if msg.role == "tool" and len(msg.content) > 500:
+                        current_messages[i] = AgentMessage(
+                            role="tool",
+                            content=msg.content[:500] + "\n...(truncated older result)",
+                            tool_call_id=msg.tool_call_id,
+                            metadata=msg.metadata,
+                        )
         else:
             await stream_response.write(
                 f"\n\n(Tool loop reached maximum of {MAX_TOOL_ROUNDS} rounds)".encode("utf-8")
@@ -555,17 +569,17 @@ class LunaCoreController:
         else:
             lines.append("**GPU**: Information unavailable")
 
-        # Available models
+        # Available models (counts only — agent uses get_available_models tool for details)
         try:
             models = await SystemMonitor.get_available_models()
-            if models.get("checkpoints"):
-                lines.append(f"\n**Available checkpoints**: {', '.join(models['checkpoints'][:5])}")
-                if len(models['checkpoints']) > 5:
-                    lines.append(f"  ... and {len(models['checkpoints']) - 5} more")
-            if models.get("loras"):
-                lines.append(f"**LoRAs**: {len(models['loras'])} available")
-            if models.get("controlnets"):
-                lines.append(f"**ControlNets**: {', '.join(models['controlnets'][:3])}")
+            model_counts = []
+            for mtype in ("checkpoints", "loras", "vae", "controlnets", "upscale_models"):
+                count = len(models.get(mtype, []))
+                if count:
+                    model_counts.append(f"{mtype}: {count}")
+            if model_counts:
+                lines.append(f"\n**Installed models**: {', '.join(model_counts)}")
+                lines.append("  Use get_available_models() tool for names and details.")
         except Exception:
             pass
 
