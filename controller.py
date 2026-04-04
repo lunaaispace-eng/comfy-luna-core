@@ -204,8 +204,7 @@ class LunaCoreController:
             # Build workflow context
             workflow_context = ""
             if current_workflow:
-                # Force minimal context for tool-calling agents to encourage tool use
-                verbose = context_mode != "minimal" and agent_name not in ("gemini",)
+                verbose = context_mode != "minimal"
                 # Try to use API format for more accurate context
                 api_wf = self._convert_ui_to_api_format(current_workflow)
                 if api_wf:
