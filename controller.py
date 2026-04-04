@@ -29,7 +29,8 @@ from .workflow import WorkflowManipulator
 logger = logging.getLogger("comfy-luna-core")
 
 MAX_CORRECTION_RETRIES = 3
-MAX_TOOL_ROUNDS = 15
+MAX_TOOL_ROUNDS = 20  # High cap — loop-breaking logic below prevents runaway
+MAX_REPEAT_TOOL_CALLS = 3  # Stop if same tool called this many times consecutively
 MAX_TOOL_RESPONSE_CHARS = 8000  # ~2K tokens — prevents context exhaustion
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
 
@@ -416,6 +417,7 @@ class LunaCoreController:
         """
         current_messages = list(messages)
         full_text = ""
+        tool_call_history = []  # Track tool names per round for loop detection
 
         for _round in range(MAX_TOOL_ROUNDS):
             text_parts = []
@@ -434,6 +436,21 @@ class LunaCoreController:
             if not tool_calls:
                 # No tool calls — agent is done
                 break
+
+            # Loop detection: check if the same tool(s) are being called repeatedly
+            round_tools = tuple(sorted(tc.name for tc in tool_calls))
+            tool_call_history.append(round_tools)
+            if len(tool_call_history) >= MAX_REPEAT_TOOL_CALLS:
+                recent = tool_call_history[-MAX_REPEAT_TOOL_CALLS:]
+                if all(r == recent[0] for r in recent):
+                    logger.warning(
+                        f"Loop detected: {recent[0]} called {MAX_REPEAT_TOOL_CALLS} "
+                        f"times consecutively, breaking tool loop"
+                    )
+                    await stream_response.write(
+                        f"\n\n(Stopped: repeated tool calls detected after {_round + 1} rounds)".encode("utf-8")
+                    )
+                    break
 
             # Record the assistant message with its tool calls
             current_messages.append(AgentMessage(

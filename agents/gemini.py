@@ -33,9 +33,13 @@ class GeminiBackend(AgentBackend):
     """
 
     # Fallback if API model listing fails
+    # Fallback if API model listing fails (ordered by cost-effectiveness)
     _DEFAULT_MODELS = [
-        "gemini-2.5-pro",
         "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-3-flash-preview",
+        "gemini-3.1-pro-preview",
+        "gemini-3.1-pro-preview-customtools",
         "gemini-2.5-flash-lite",
         "gemini-2.0-flash",
         "gemini-2.0-flash-lite",
@@ -43,9 +47,10 @@ class GeminiBackend(AgentBackend):
 
     # Skip models that can't do generateContent chat
     _SKIP_KEYWORDS = (
-        "tts", "embedding", "image-generation", "audio",
+        "tts", "embedding", "audio", "live",
         "compute", "computer", "robotics", "search",
-        "imagen", "veo",
+        "imagen", "veo", "thinking", "tuning",
+        "learnlm", "gemma", "deep-research",
     )
 
     def __init__(self):
@@ -116,11 +121,17 @@ class GeminiBackend(AgentBackend):
                 if any(kw in short_name for kw in self._SKIP_KEYWORDS):
                     continue
 
+                # Skip image generation variants (e.g. gemini-2.5-flash-image, gemini-3.1-flash-image-preview)
+                if "-image" in short_name:
+                    continue
+
                 # Skip versioned/dated variants (e.g. gemini-2.5-pro-preview-05-06)
                 if re.search(r'-\d{2,4}-\d{2}', short_name):
                     continue
-                # Skip -preview-NNN, -exp-NNNN, -latest variants
+                # Skip -preview-NNN, -exp-NNNN, -latest variants, and bare -exp suffix
                 if re.search(r'-(preview|exp|latest)-?\d', short_name):
+                    continue
+                if short_name.endswith("-exp"):
                     continue
                 # Skip -001, -002 suffixed variants
                 if re.search(r'-\d{3}$', short_name):
@@ -132,12 +143,15 @@ class GeminiBackend(AgentBackend):
             models = list(dict.fromkeys(models))
 
             if models:
-                # Sort: prefer 2.5 > 2.0, pro > flash > lite
+                # Sort: 2.5 stable first (best cost/quality), then 3.x preview, then 2.0
                 models.sort(key=lambda m: (
-                    "2.5" not in m,
-                    "2.0" not in m,
+                    "2.5" not in m,          # 2.5 stable first
+                    "3.1" not in m and "3-" not in m,  # then 3.x
+                    "2.0" not in m,          # then 2.0
+                    "flash" not in m or "lite" in m,  # flash (non-lite) before pro
                     "pro" not in m,
                     "lite" in m,
+                    "customtools" in m,      # customtools variant last within tier
                     m,
                 ))
                 self._cached_models = models
