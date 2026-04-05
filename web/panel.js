@@ -127,6 +127,12 @@ class LunaCorePanel {
             <line x1="9" y1="15" x2="15" y2="15"/>
           </svg>
         </button>
+        <button class="cp-unload-model" title="Unload LLM from VRAM" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64A9 9 0 1 1 5.63 6.64"/>
+            <line x1="12" y1="2" x2="12" y2="12"/>
+          </svg>
+        </button>
         <button class="cp-mode-toggle" title="Pop out to floating window">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -223,6 +229,7 @@ class LunaCorePanel {
     this.agentSelect.addEventListener("change", (e) => {
       this.currentAgent = e.target.value;
       this.updateModelSelect();
+      this.updateUnloadButton();
     });
 
     this.modelSelect.addEventListener("change", (e) => {
@@ -279,6 +286,29 @@ class LunaCorePanel {
 
     this.container.querySelector(".cp-new-chat").addEventListener("click", () => {
       this.resetChat();
+    });
+
+    // Unload local model from VRAM
+    this.unloadBtn = this.container.querySelector(".cp-unload-model");
+    this.unloadBtn.addEventListener("click", async () => {
+      this.unloadBtn.disabled = true;
+      this.unloadBtn.title = "Unloading...";
+      try {
+        const resp = await fetch("/luna/unload-model", { method: "POST" });
+        const data = await resp.json();
+        if (data.success) {
+          this.unloadBtn.style.opacity = "0.5";
+          this.unloadBtn.title = "Model unloaded";
+          setTimeout(() => {
+            this.unloadBtn.style.opacity = "1";
+            this.unloadBtn.title = "Unload LLM from VRAM";
+            this.unloadBtn.disabled = false;
+          }, 3000);
+        }
+      } catch (e) {
+        this.unloadBtn.disabled = false;
+        this.unloadBtn.title = "Unload LLM from VRAM";
+      }
     });
 
     // Context options toggle
@@ -413,7 +443,7 @@ class LunaCorePanel {
         font-size: 12px;
         max-width: 120px;
       }
-      .cp-new-chat, .cp-close {
+      .cp-new-chat, .cp-close, .cp-unload-model {
         background: none;
         border: none;
         color: var(--cp-text-dim);
@@ -424,9 +454,16 @@ class LunaCorePanel {
         align-items: center;
         justify-content: center;
       }
-      .cp-new-chat:hover, .cp-close:hover {
+      .cp-new-chat:hover, .cp-close:hover, .cp-unload-model:hover {
         color: var(--cp-text);
         background: rgba(255,255,255,0.1);
+      }
+      .cp-unload-model:hover {
+        color: #ff6b6b;
+      }
+      .cp-unload-model:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
       }
       .cp-close { font-size: 22px; line-height: 1; }
 
@@ -916,6 +953,7 @@ class LunaCorePanel {
     }
 
     this.updateModelSelect();
+    this.updateUnloadButton();
   }
 
   updateModelSelect() {
@@ -1460,6 +1498,13 @@ class LunaCorePanel {
   hide() {
     if (this.mode === "sidebar") return;
     this.container.classList.add("luna-hidden");
+  }
+
+  updateUnloadButton() {
+    const localAgents = ["ollama", "llamacpp"];
+    if (this.unloadBtn) {
+      this.unloadBtn.style.display = localAgents.includes(this.currentAgent) ? "" : "none";
+    }
   }
 
   resetChat() {

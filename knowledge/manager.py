@@ -243,9 +243,11 @@ class KnowledgeManager:
         if agent_name == "gemini":
             return 10_000  # Hard cap — Gemini has tools, doesn't need large knowledge dumps
 
-        if agent_name == "ollama":
-            size_indicators = {"70b": 20000, "32b": 15000, "14b": 12000, "13b": 12000,
-                             "8b": 8000, "7b": 8000, "3b": 8000, "1b": 8000}
+        if agent_name in ("ollama", "llamacpp"):
+            size_indicators = {"70b": 20000, "32b": 15000, "27b": 15000,
+                             "14b": 12000, "13b": 12000,
+                             "9b": 10000, "8b": 8000, "7b": 8000,
+                             "4b": 6000, "3b": 6000, "1b": 4000}
             model_lower = model_name.lower()
             for indicator, budget in size_indicators.items():
                 if indicator in model_lower:

@@ -336,9 +336,38 @@ class LunaCoreController:
 
             except Exception as e:
                 await response.write(f"\n\nError: {str(e)}".encode("utf-8"))
+            finally:
+                # Auto-unload local models to free VRAM for ComfyUI
+                if hasattr(agent, 'unload') and agent.name in ("llamacpp", "ollama"):
+                    try:
+                        await agent.unload()
+                        logger.info(f"Auto-unloaded {agent.name} model to free VRAM")
+                    except Exception:
+                        pass
 
             await response.write_eof()
             return response
+
+        @routes.post("/luna/unload-model")
+        async def unload_model(request: web.Request) -> web.Response:
+            """Manually unload local LLM from VRAM."""
+            agent_name = self.current_agent
+            agent = AgentRegistry.get(agent_name)
+            if agent and hasattr(agent, 'unload'):
+                try:
+                    await agent.unload()
+                    return web.json_response({
+                        "success": True,
+                        "message": f"{agent.display_name} model unloaded from VRAM"
+                    })
+                except Exception as e:
+                    return web.json_response({
+                        "success": False, "error": str(e)
+                    }, status=500)
+            return web.json_response({
+                "success": True,
+                "message": "No local model loaded"
+            })
 
         @routes.post("/luna/apply-workflow")
         async def apply_workflow(request: web.Request) -> web.Response:

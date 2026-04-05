@@ -382,6 +382,10 @@ class OllamaBackend(AgentBackend):
                 except Exception:
                     pass  # Best effort
 
+    async def unload(self):
+        """Unload all models — called by controller after generation."""
+        await self.unload_model()
+
 
 # Auto-register this backend
 AgentRegistry.register(OllamaBackend)
