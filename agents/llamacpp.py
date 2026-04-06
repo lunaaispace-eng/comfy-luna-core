@@ -124,8 +124,12 @@ class LlamaCppBackend(AgentBackend):
             if llm.exists():
                 return llm
 
-        # Auto-detect ComfyUI root
+        # Auto-detect ComfyUI root — try extension path first (most reliable)
+        extension_root = Path(__file__).resolve().parent.parent  # agents/ -> Comfy Pilot/
+        comfyui_from_ext = extension_root.parent.parent  # custom_nodes/ -> ComfyUI/
+
         candidates = [
+            comfyui_from_ext,
             Path.cwd(),
             Path.cwd().parent,
             Path.cwd().parent.parent,
