@@ -47,7 +47,7 @@ TOOL_CALLING_PARAMS = {
     "top_p": 0.95,
     "top_k": 20,
     "min_p": 0.0,
-    "presence_penalty": 0.0,
+    "repeat_penalty": 1.0,
 }
 
 # General chat / creative tasks: higher temp, presence penalty for variety
@@ -56,7 +56,7 @@ CHAT_PARAMS = {
     "top_p": 0.8,
     "top_k": 20,
     "min_p": 0.0,
-    "presence_penalty": 1.5,
+    "repeat_penalty": 1.5,
 }
 
 # Reasoning tasks: high temp, high presence penalty
@@ -65,7 +65,7 @@ REASONING_PARAMS = {
     "top_p": 0.95,
     "top_k": 20,
     "min_p": 0.0,
-    "presence_penalty": 1.5,
+    "repeat_penalty": 1.5,
 }
 
 
